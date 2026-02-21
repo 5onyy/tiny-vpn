@@ -322,10 +322,19 @@ def exchange_loop(self, client, remote):
                 break
 ```
 
+## Testing
+
 Now we can test it using `curl`:
 
-```python
-curl -v  --socks5 127.0.0.1:9011 -U username:password https://github.com
+We can also test curl with IPv4
+```powershell
+curl -v  --socks5 <your_socks_address>:1080 -U username:password https://github.com
+```
+
+We can also test remote DNS resolution (domain name over SOCKS) with:
+
+```powershell 
+curl -4 -v --socks5-hostname <your_socks_address>:1080 -U username:password https://google.com
 ```
 
 ## Limitations

@@ -7,20 +7,22 @@ from socketserver import ThreadingMixIn, TCPServer, StreamRequestHandler
 logging.basicConfig(level=logging.DEBUG)
 
 SOCKS_VERSION = 5
-SOCKS_ADDR = '127.0.0.1'
+SOCKS_ADDR = '0.0.0.0'
 SOCKS_PORT = 1080
 SOCKS_USER = 'username'
 SOCKS_PASS = 'password'
 
 class ThreadingTCPServer(ThreadingMixIn, TCPServer):
     allow_reuse_address = True
+    daemon_threads = True
+    pass
 
 
 class SocksProxy(StreamRequestHandler):
     username = SOCKS_USER
     password = SOCKS_PASS
 
-    def handle(self):
+    def handle(self):        
         logging.info('Accepting connection from %s:%s' % self.client_address)
 
         # greeting header
@@ -29,35 +31,43 @@ class SocksProxy(StreamRequestHandler):
         version, nmethods = struct.unpack("!BB", header)
 
         # socks 5
+        logging.info(f"SOCKS version: {version} - nmethods: {nmethods}")
         assert version == SOCKS_VERSION
         assert nmethods > 0
 
         # get available methods
         methods = self.get_available_methods(nmethods)
 
-        # accept only USERNAME/PASSWORD auth
-        if 2 not in set(methods):
-            # close connection
+        if (0 not in set(methods)) and (2 not in set(methods)):
             self.server.close_request(self.request)
             return
 
-        # send welcome message
-        self.connection.sendall(struct.pack("!BB", SOCKS_VERSION, 2))
+        # Fallback to no authentication (only for staging testing)
+        if 2 not in set(methods):
+            self.connection.sendall(struct.pack("!BB", SOCKS_VERSION, 0))
 
-        if not self.verify_credentials():
-            return
+        # Otherwise, only use USERNAME/PASSWORD auth
+        # send welcome message
+        
+        else:
+            self.connection.sendall(struct.pack("!BB", SOCKS_VERSION, 2))
+            if not self.verify_credentials():
+                return  
 
         # request
         version, cmd, _, address_type = struct.unpack("!BBBB", self.connection.recv(4))
+        logging.info(f"version: {version} - command: {cmd} - address_type: {address_type}")
         assert version == SOCKS_VERSION
 
         if address_type == 1:  # IPv4
             inet_type = socket.AF_INET
             address = socket.inet_ntop(inet_type, self.connection.recv(4))
         elif address_type == 3:  # Domain name
+            inet_type = socket.AF_INET
             domain_length = self.connection.recv(1)[0]
             address = self.connection.recv(domain_length)
             address = socket.gethostbyname(address)
+            logging.info(f"domain_length: {domain_length} - address: {address}")
         elif address_type == 4: # IPv6
             inet_type = socket.AF_INET6
             address = socket.inet_ntop(inet_type, self.connection.recv(16))
@@ -95,6 +105,7 @@ class SocksProxy(StreamRequestHandler):
         methods = []
         for i in range(n):
             methods.append(ord(self.connection.recv(1)))
+        logging.info(f"Supported methods: {methods}")
         return methods
 
     def verify_credentials(self):
@@ -107,10 +118,12 @@ class SocksProxy(StreamRequestHandler):
         password_len = ord(self.connection.recv(1))
         password = self.connection.recv(password_len).decode('utf-8')
 
+        logging.info(f"verify credential: {username}-{password}")
         if username == self.username and password == self.password:
             # success, status = 0
             response = struct.pack("!BB", version, 0)
             self.connection.sendall(response)
+            logging.info('Verify credential success!')
             return True
 
         # failure, status != 0
@@ -138,8 +151,17 @@ class SocksProxy(StreamRequestHandler):
                 data = remote.recv(4096)
                 if client.send(data) <= 0:
                     break
-
-
+                
+    def shutdown_server(self):
+        self.server.shutdown()      # stop serve_forever loop
+        self.server.server_close()  # close listening socket
+    
 if __name__ == '__main__':
+    logging.info('running socks5 server')
     with ThreadingTCPServer((SOCKS_ADDR, SOCKS_PORT), SocksProxy) as server:
-        server.serve_forever()
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            logging.info("Shutting down server...")
+            server.shutdown()      # stop serve_forever loop
+            server.server_close()  # close listening socket
