@@ -1,7 +1,7 @@
 # tiny-vpn – Simple SOCKS5 Server in Python
 
 This project contains a tiny, basic SOCKS5 proxy server written in Python 3.6+.  
-It follows the SOCKS5 protocol as described in [RFC 1928] and is intended as a learning example for how SOCKS works internally.
+It follows the SOCKS5 protocol as described in [RFC 1928](https://www.ietf.org/rfc/rfc1928.txt) and is intended as a learning example for how SOCKS works internally.
 
 > Note: This is an educational implementation, not a production-ready VPN/proxy.
 
