@@ -79,6 +79,8 @@ Here `version` field represents a version of the protocol, which equals to 5 in 
 
 According to the RFC 1928, the supported values of methods field defined as follows:
 
+<div align="center">
+
 | Code | Message |
 | :---: | :---: |
 | `X'00'` | NO AUTHENTICATION REQUIRED | 
@@ -88,14 +90,19 @@ According to the RFC 1928, the supported values of methods field defined as foll
 | `X'80'` | to X'FE' RESERVED FOR PRIVATE METHODS |
 | `X'FF'` | NO ACCEPTABLE METHODS | 
 
+</div>
 
 When the SOCKS server receives such message, it should choose an appropriate method and answer back. Let's pretend I only support a `USERNAME/PASSWORD` method.
 
 The format of the answer looks as follows:
 
+<div align="center">
+
 | version | method |
 | :---: | :---: |
 | 1 byte | 1 byte |
+
+</div>
 
 Here is how the whole process looks in Python:
 
@@ -133,17 +140,25 @@ Here the [recv](https://docs.python.org/2/library/socket.html#socket.socket.recv
 
 Once the client has received the server choice, it responds with username and password credentials.
 
+<div align="center">
+
 | version | usr_len | usr_name | pwd_len | passwd |
 | :-------------------:| :--------------------: | :--------------------: | :---: | :---: |
 | 1 byte            | 1 byte                | 0 to 255 bytes      | 1 byte | 0 to 255 bytes |
+
+</div>
 
 The `version` field represents the authentication version, which is equals to 1 in our case. The `usr_len` and `pwd_len` fields represent lengths of text fields so the server knows how much data it should read from the client.
 
 The server response should look as follows:
 
+<div align="center">
+
 | version | status |
 | :---: | :---: |
 | 1 byte | 1 byte |
+
+</div>
 
 The `status` field of 0 indicates a successful authorization, while other values treated as a failure.
 
@@ -176,9 +191,13 @@ def verify_credentials(self):
 
 Once the authorization has completed the client can send request details.
 
+<div align="center">
+
 | version | cmd | rsv | atyp | dst.addr | dst.port |
 | :---:| :---: | :---: |:---:| :---: | :---: |
 | 1 byte | 1 byte  | `X'00'` | 1 byte | 4 to 255 bytes | 2 bytes |
+
+</div>
 
 - **VER** protocol version: `X'05'`
 
@@ -201,14 +220,19 @@ If a client sends a domain name, it **should be resolved by the DNS on the serve
 
 As soon as server establishes a connection to the desired destination it should reply with a status and remote address.
 
+<div align="center">
+
 | version | rep | rsv | atyp | bnd.addr | bnd.port |
 | :---:| :---: | :---: |:---:| :---: | :---: |
 | 1 byte | 1 byte  | `X'00'` | 1 byte | 4 to 255 bytes | 2 bytes |
 
+</div>
 
 - **VER** protocol version: `X'05'`
 
 - **REP** Reply field:
+
+<div align="center">
 
 |Code | Message |
 | :---: | :---: |
@@ -222,6 +246,8 @@ As soon as server establishes a connection to the desired destination it should 
 | `X'07'` | Command not supported     |
 | `X'08'` | Address type not supported        |
 | `X'09'` | to X'FF' unassigned       |
+
+</div>
 
 - **ATYP** address type of following address:
     - **IPv4** address:        `X'01'`
